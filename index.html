@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>校园作息打卡 (Schedule Master)</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="app">
+    <!-- Sidebar -->
+    <aside id="sidebar">
+      <div class="brand">
+        <span class="brand-icon">🎓</span>
+        <span class="brand-text">Schedule Master</span>
+      </div>
+      <nav class="nav-menu">
+        <a class="nav-item active" data-view="dashboard"><span class="nav-icon">📊</span> 仪表盘</a>
+        <a class="nav-item" data-view="calendar"><span class="nav-icon">📅</span> 日历</a>
+        <a class="nav-item" data-view="classes"><span class="nav-icon">📚</span> 课程管理</a>
+        <a class="nav-item" data-view="todos"><span class="nav-icon">✅</span> 提醒事项</a>
+        <a class="nav-item" data-view="reminders"><span class="nav-icon">🔔</span> 通知</a>
+        <a class="nav-item" data-view="recurring"><span class="nav-icon">🔄</span> 定期循环</a>
+        <a class="nav-item" data-view="pomodoro"><span class="nav-icon">🍅</span> 番茄时钟</a>
+        <a class="nav-item" data-view="settings"><span class="nav-icon">⚙️</span> 设置</a>
+      </nav>
+    </aside>
+
+    <!-- Main -->
+    <main id="main-content">
+      <header class="main-header">
+        <div class="header-left">
+          <h1 class="page-title" id="page-title">仪表盘</h1>
+          <h2 class="today-schedule" id="page-subtitle">今日课表：<span id="today-date"></span></h2>
+        </div>
+        <div class="header-right">
+          <button class="pomo-module-toggle-btn" id="pomo-module-toggle" title="切换模块" style="display: none;">
+            <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M17,17H7V14L3,18L7,22V19H19V13H17V17M7,7H17V10L21,6L17,2V5H5V11H7V7Z"/></svg>
+          </button>
+          <div class="theme-toggle" id="global-fullscreen-toggle" title="全屏切换" style="display:flex;align-items:center;justify-content:center;">
+            <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+          </div>
+          <div class="theme-toggle" id="theme-toggle" title="切换主题">🌙</div>
+          <div class="notification-bell" id="notification-bell">🔔</div>
+        </div>
+      </header>
+
+      <!-- Toast -->
+      <div class="toast-notification" id="toast-notification" style="display:none;">
+        <span class="toast-icon">🔔</span>
+        <div class="toast-content">
+          <strong id="toast-title"></strong>
+          <span id="toast-body"></span>
+        </div>
+        <button class="toast-close" id="toast-close">&times;</button>
+      </div>
+
+      <!-- ============ VIEW: Dashboard ============ -->
+      <div class="view-panel active" id="view-dashboard">
+        <div class="content-body">
+          <div class="left-panel">
+            <div class="card current-event-card">
+              <h3 class="card-title">当前事件</h3>
+              <div class="current-class-info">
+                <div class="class-label">当前课程</div>
+                <div class="class-name" id="current-event-name">休息中</div>
+                <div class="class-time" id="current-event-time">(--:-- - --:--)</div>
+              </div>
+              <div class="progress-row">
+                <span class="progress-label">进度</span>
+                <div class="progress-track"><div class="progress-fill" id="progress-bar"></div></div>
+                <span class="progress-mins" id="progress-text">--</span>
+              </div>
+              <div class="upcoming-class-info">
+                <div class="class-label">下一节课</div>
+                <div class="class-name" id="next-event-name">--</div>
+                <div class="class-time" id="next-event-time">(--:-- - --:--)</div>
+                <div class="next-countdown-text" id="next-wait-time"></div>
+              </div>
+            </div>
+            <div class="card calendar-card">
+              <div class="cal-header">
+                <button class="cal-nav" id="cal-prev">&lt;</button>
+                <span class="cal-month-label" id="cal-month-label"></span>
+                <button class="cal-nav" id="cal-next">&gt;</button>
+              </div>
+              <div class="cal-grid" id="cal-grid"></div>
+            </div>
+          </div>
+          <div class="right-panel">
+            <div class="timetable-wrapper">
+              <div class="tt-header" id="tt-header">
+                <div class="tt-corner">节次</div>
+                <div class="tt-day-head">周一</div><div class="tt-day-head">周二</div>
+                <div class="tt-day-head">周三</div><div class="tt-day-head">周四</div>
+                <div class="tt-day-head">周五</div><div class="tt-day-head weekend">周六</div><div class="tt-day-head weekend">周日</div>
+              </div>
+              <div class="tt-body" id="tt-body"></div>
+            </div>
+            <div class="toolbar">
+              <button class="toolbar-btn primary" id="btn-add-class">+ 添加课程</button>
+              <button class="toolbar-btn" id="btn-fill-all">🎲 一键铺满</button>
+              <button class="toolbar-btn" id="btn-toggle-sat">周六: 显示</button>
+              <button class="toolbar-btn" id="btn-toggle-sun">周日: 显示</button>
+              <button class="toolbar-btn" id="btn-settings">⚙️ 课表设置</button>
+              <button class="toolbar-btn save" id="btn-save">💾 保存</button>
+              <button class="toolbar-btn danger" id="btn-clear-all-courses">🗑️ 一键清除</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 课表模板选择弹窗 -->
+      <div class="modal-overlay" id="fill-overlay" style="display:none;">
+        <div class="modal" style="max-width:420px;">
+          <h3 class="modal-title">🎲 一键铺满课表</h3>
+          <p class="form-hint">选择课表类型，系统将随机生成一套完整课表。</p>
+          <div class="fill-template-grid" id="fill-template-grid">
+            <div class="fill-template-card" data-tpl="primary">
+              <div class="fill-tpl-icon">🏫</div><div class="fill-tpl-name">小学</div>
+            </div>
+            <div class="fill-template-card" data-tpl="middle">
+              <div class="fill-tpl-icon">📖</div><div class="fill-tpl-name">初中</div>
+            </div>
+            <div class="fill-template-card" data-tpl="high">
+              <div class="fill-tpl-icon">🎓</div><div class="fill-tpl-name">高中</div>
+            </div>
+            <div class="fill-template-card" data-tpl="cs">
+              <div class="fill-tpl-icon">💻</div><div class="fill-tpl-name">大学·计算机</div>
+            </div>
+            <div class="fill-template-card" data-tpl="business">
+              <div class="fill-tpl-icon">📊</div><div class="fill-tpl-name">大学·工商管理</div>
+            </div>
+            <div class="fill-template-card" data-tpl="art">
+              <div class="fill-tpl-icon">🎨</div><div class="fill-tpl-name">大学·艺术设计</div>
+            </div>
+            <div class="fill-template-card" data-tpl="medicine">
+              <div class="fill-tpl-icon">🏥</div><div class="fill-tpl-name">大学·临床医学</div>
+            </div>
+            <div class="fill-template-card" data-tpl="law">
+              <div class="fill-tpl-icon">⚖️</div><div class="fill-tpl-name">大学·法学</div>
+            </div>
+            <div class="fill-template-card" data-tpl="engineer">
+              <div class="fill-tpl-icon">🔧</div><div class="fill-tpl-name">大学·机械工程</div>
+            </div>
+          </div>
+          <div class="modal-actions">
+            <button class="toolbar-btn" id="fill-cancel">取消</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ VIEW: Calendar ============ -->
+      <div class="view-panel" id="view-calendar">
+        <div class="calendar-view-body">
+          <div class="full-cal-panel card">
+            <div class="full-cal-header">
+              <button class="cal-nav" id="fcal-prev">&lt;</button>
+              <span class="full-cal-title" id="fcal-title"></span>
+              <button class="cal-nav" id="fcal-next">&gt;</button>
+            </div>
+            <div class="full-cal-grid" id="fcal-grid"></div>
+          </div>
+          <div class="day-detail-panel card">
+            <h3 class="card-title" id="day-detail-title">选择日期查看课程</h3>
+            <div id="day-detail-content" class="day-detail-content">
+              <p class="text-muted">点击日历中的日期查看当天课程安排。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ VIEW: Classes ============ -->
+      <div class="view-panel" id="view-classes">
+        <div class="classes-view-body">
+          <div class="classes-toolbar">
+            <div class="filter-group">
+              <label>筛选：</label>
+              <select id="class-filter-day">
+                <option value="all">全部</option>
+                <option value="0">周一</option><option value="1">周二</option>
+                <option value="2">周三</option><option value="3">周四</option>
+                <option value="4">周五</option><option value="5">周六</option><option value="6">周日</option>
+              </select>
+            </div>
+            <button class="toolbar-btn primary" id="btn-add-class-2">+ 添加课程</button>
+          </div>
+          <div class="classes-list card" id="classes-list">
+            <!-- JS renders -->
+          </div>
+          <div class="classes-stats" id="classes-stats"></div>
+        </div>
+      </div>
+
+      <!-- ============ VIEW: Reminders ============ -->
+      <div class="view-panel" id="view-reminders">
+        <div class="reminders-view-body">
+          <div class="card reminder-settings-card">
+            <h3 class="card-title">🔔 通知设置</h3>
+            <div class="setting-row">
+              <div class="setting-info">
+                <span class="setting-name">系统弹窗通知</span>
+                <span class="setting-desc">在 Windows 右下角推送通知</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="toggle-notify" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="setting-row">
+              <div class="setting-info">
+                <span class="setting-name">铃声提醒</span>
+                <span class="setting-desc">上下课时播放铃声</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="toggle-sound" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="setting-row">
+              <div class="setting-info">
+                <span class="setting-name">提前提醒</span>
+                <span class="setting-desc">课程开始前提前通知</span>
+              </div>
+              <div class="setting-input">
+                <input type="number" id="advance-minutes" value="5" min="1" max="30"> <span>分钟</span>
+              </div>
+            </div>
+            <div class="setting-row">
+              <div class="setting-info">
+                <span class="setting-name">下课提醒</span>
+                <span class="setting-desc">每节课结束时提醒</span>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="toggle-classend">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+          <div class="card">
+            <h3 class="card-title">📋 通知记录</h3>
+            <div class="notification-log" id="notification-log">
+              <p class="text-muted">暂无通知记录，上课时会在此处记录。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ VIEW: Settings ============ -->
+      <div class="view-panel" id="view-settings">
+        <div class="settings-view-body">
+          <div class="card">
+            <h3 class="card-title">⏰ 课表时间配置</h3>
+            <div class="settings-grid">
+              <div class="settings-section">
+                <h4>上午</h4>
+                <div class="form-group"><label>第一节上课时间</label><input type="time" id="sv-morning-start" value="08:00"></div>
+                <div class="form-group"><label>上午节数</label><input type="number" id="sv-morning-count" min="1" max="8" value="4"></div>
+              </div>
+              <div class="settings-section">
+                <h4>下午</h4>
+                <div class="form-group"><label>下午开始时间</label><input type="time" id="sv-afternoon-start" value="13:30"></div>
+                <div class="form-group"><label>下午节数</label><input type="number" id="sv-afternoon-count" min="1" max="8" value="4"></div>
+              </div>
+              <div class="settings-section">
+                <h4>时长</h4>
+                <div class="form-group"><label>每节课时长（分钟）</label><input type="number" id="sv-period-duration" min="20" max="120" value="45"></div>
+                <div class="form-group"><label>课间休息（分钟）</label><input type="number" id="sv-break-duration" min="5" max="30" value="10"></div>
+              </div>
+            </div>
+            <div class="computed-preview" id="sv-preview"></div>
+            <div style="margin-top:12px;display:flex;gap:8px;">
+              <button class="toolbar-btn primary" id="sv-apply">✅ 应用设置</button>
+            </div>
+          </div>
+          <div class="card" style="margin-top:16px;">
+            <h3 class="card-title">💾 数据管理</h3>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+              <button class="toolbar-btn" id="btn-export">📤 导出数据</button>
+              <button class="toolbar-btn" id="btn-import">📥 导入数据</button>
+              <button class="toolbar-btn danger" id="btn-clear-all">🗑️ 清空所有数据</button>
+            </div>
+            <input type="file" id="import-file-input" accept=".json" style="display:none;">
+          </div>
+          <div class="card" style="margin-top:16px;">
+            <h3 class="card-title">ℹ️ 关于</h3>
+            <p style="font-size:13px;color:var(--text-secondary);">Schedule Master v1.0.0<br>基于 Electron 构建的校园作息打卡桌面程序。<br>课表数据存储在本地浏览器 localStorage 中。</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ VIEW: Recurring Reminders ============ -->
+      <div class="view-panel" id="view-recurring">
+        <div class="recurring-view-body">
+          <div class="recurring-header">
+            <div class="recurring-stats">
+              <div class="stat-bubble"><span id="recurring-active-count">0</span> 个活跃任务</div>
+            </div>
+            <button class="toolbar-btn primary" id="btn-add-recurring">+ 新增循环提醒</button>
+          </div>
+          <div class="recurring-list-grid" id="recurring-list-grid">
+            <!-- JS renders -->
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ VIEW: Todos (Apple Reminders Style) ============ -->
+      <div class="view-panel" id="view-todos">
+        <div class="todos-view-body">
+          <div class="todos-sidebar">
+            <div class="smart-lists-grid">
+              <div class="smart-card sl-today" data-filter="today">
+                <div class="smart-card-icon">📅</div>
+                <div class="smart-card-count" id="sl-today-count">0</div>
+                <div class="smart-card-label">今天</div>
+              </div>
+              <div class="smart-card sl-scheduled" data-filter="scheduled">
+                <div class="smart-card-icon">📆</div>
+                <div class="smart-card-count" id="sl-scheduled-count">0</div>
+                <div class="smart-card-label">计划</div>
+              </div>
+              <div class="smart-card sl-all" data-filter="all">
+                <div class="smart-card-icon">📋</div>
+                <div class="smart-card-count" id="sl-all-count">0</div>
+                <div class="smart-card-label">全部</div>
+              </div>
+              <div class="smart-card sl-flagged" data-filter="flagged">
+                <div class="smart-card-icon">🚩</div>
+                <div class="smart-card-count" id="sl-flagged-count">0</div>
+                <div class="smart-card-label">旗标</div>
+              </div>
+              <div class="smart-card sl-done" data-filter="done">
+                <div class="smart-card-icon">✅</div>
+                <div class="smart-card-count" id="sl-done-count">0</div>
+                <div class="smart-card-label">已完成</div>
+              </div>
+            </div>
+            <div class="my-lists-section">
+              <div class="my-lists-header">
+                <span class="my-lists-title">我的列表</span>
+                <button class="add-list-btn" id="btn-add-list">+</button>
+              </div>
+              <div class="my-lists-items" id="my-lists-items"></div>
+            </div>
+          </div>
+          <div class="todos-main">
+            <div class="todos-main-header">
+              <h3 class="todos-panel-title" id="todos-panel-title">全部</h3>
+              <span class="todos-panel-count" id="todos-panel-count"></span>
+            </div>
+            <div class="todos-items-list" id="todos-items-list"></div>
+            <div class="add-todo-row">
+              <button class="add-todo-btn" id="btn-add-todo">+ 新建提醒事项</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ VIEW: Pomodoro ============ -->
+      <div class="view-panel" id="view-pomodoro">
+        <div class="pomodoro-view-body" id="pomo-module-1">
+          <div class="pomo-stats-container">
+            <div class="pomo-stat-card card">
+              <span class="pomo-stat-icon">🍅</span>
+              <span class="pomo-stat-value" id="pomo-stat-today">0</span>
+              <span class="pomo-stat-label">今日完成</span>
+            </div>
+            <div class="pomo-stat-card card">
+              <span class="pomo-stat-icon">⏱️</span>
+              <span class="pomo-stat-value" id="pomo-stat-mins">0</span>
+              <span class="pomo-stat-label">专注分钟</span>
+            </div>
+            <div class="pomo-stat-card card">
+              <span class="pomo-stat-icon">🔥</span>
+              <span class="pomo-stat-value" id="pomo-stat-streak">0</span>
+              <span class="pomo-stat-label">连续天数</span>
+            </div>
+
+            <div class="pomo-settings-grid">
+              <div class="card pomo-setting-card">
+                <h3 class="card-title">⚙️ 计时设置</h3>
+                <div class="pomo-setting-row">
+                  <label>专注时长</label>
+                  <input type="number" id="pomo-work-time" value="25" min="1" max="60">
+                  <span>min</span>
+                </div>
+                <div class="pomo-setting-row">
+                  <label>短休时长</label>
+                  <input type="number" id="pomo-short-time" value="5" min="1" max="30">
+                  <span>min</span>
+                </div>
+                <div class="pomo-setting-row">
+                  <label>长休时长</label>
+                  <input type="number" id="pomo-long-time" value="15" min="1" max="60">
+                  <span>min</span>
+                </div>
+                <div class="pomo-setting-row">
+                  <label>长休间隔</label>
+                  <input type="number" id="pomo-long-interval" value="4" min="1" max="10">
+                  <span>轮</span>
+                </div>
+                <div class="pomo-setting-row" style="margin-top: 12px; justify-content: center;">
+                  <button class="toolbar-btn danger" id="pomo-reset-stats" style="width: 100%; height: 32px; font-size: 12px;">🗑️ 重置统计数据</button>
+                </div>
+              </div>
+              <div class="card pomo-setting-card">
+                <h3 class="card-title">🔔 自动化</h3>
+                <div class="setting-row">
+                  <div class="setting-info">
+                    <span class="setting-name">自动开始休息</span>
+                  </div>
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="pomo-auto-break">
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+                <div class="setting-row">
+                  <div class="setting-info">
+                    <span class="setting-name">自动开始专注</span>
+                  </div>
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="pomo-auto-work">
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pomo-content-wrapper">
+            <div class="pomo-main-card card">
+              <div class="pomo-modes">
+                <button class="pomo-mode-btn active" data-mode="work">专注</button>
+                <button class="pomo-mode-btn" data-mode="short">短休</button>
+                <button class="pomo-mode-btn" data-mode="long">长休</button>
+                <div class="pomo-mode-divider"></div>
+                <button class="pomo-mode-btn sync-btn" id="pomo-sync-toggle" title="与课表同步">
+                  <span class="sync-icon">🔄</span> 同步课表
+                </button>
+              </div>
+              
+              <div class="pomo-timer-display">
+              <div class="pomo-circle-svg">
+                <svg viewBox="0 0 100 100">
+                  <circle class="pomo-bg" cx="50" cy="50" r="45"></circle>
+                  <circle class="pomo-progress" id="pomo-progress-circle" cx="50" cy="50" r="45"></circle>
+                </svg>
+                <div class="pomo-time" id="pomo-time">25:00</div>
+              </div>
+            </div>
+              <div class="pomo-view-selector">
+                <button class="pomo-view-btn active" data-vmode="normal">传统</button>
+                <button class="pomo-view-btn" data-vmode="rough">粗略</button>
+                <button class="pomo-view-btn" data-vmode="percent">百分比</button>
+              </div>
+
+            <div class="pomo-controls">
+              <button class="pomo-ctrl-btn secondary" id="pomo-reset" title="重置">
+                <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+              </button>
+              <button class="pomo-ctrl-btn primary" id="pomo-start-pause">
+                <span id="pomo-start-icon">▶</span>
+              </button>
+              <button class="pomo-ctrl-btn secondary" id="pomo-skip" title="跳过">
+                <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+              </button>
+            </div>
+
+            <div class="pomo-status-text" id="pomo-status-text">准备开始专注...</div>
+          </div> <!-- End of pomo-main-card -->
+        </div> <!-- End of pomo-content-wrapper -->
+      </div> <!-- End of #pomo-module-1 -->
+        
+        <div class="pomodoro-view-body ft-layout-wrapper" id="pomo-module-2" style="display: none;">
+          <!-- FocusTide 风格底层全屏动画 -->
+          <div class="ft-bg-base" id="ft-progress-base"></div>
+          <div class="ft-bg-layer" id="ft-progress-bg"></div>
+          <div class="ft-bg-layer" id="ft-progress-next"></div>
+
+          <!-- 实际内容浮层 -->
+          <div class="ft-inner-content">
+            <!-- Top bar -->
+            <div class="ft-header">
+              <div class="ft-mode-badge" id="ft-mode-badge" title="当前状态指示" aria-label="状态">
+                <div class="ft-mode-dots" id="ft-mode-dots">
+                  <span class="ft-dot" data-mode="work"></span>
+                  <span class="ft-dot" data-mode="short"></span>
+                  <span class="ft-dot" data-mode="long"></span>
+                </div>
+                <div class="ft-mode-text" id="ft-mode-name">工作</div>
+              </div>
+              
+              <div class="ft-toolbar-spacer"></div>
+              
+              <button class="ft-btn-icon" id="ft-fullscreen-toggle" aria-label="全屏切换" title="全屏切换">
+                <svg viewBox="0 0 24 24" width="24" height="24" id="ft-fullscreen-svg"><path fill="currentColor" d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+              </button>
+
+              <button class="ft-btn-icon" id="ft-sync-toggle" aria-label="与课表同步" title="与课表同步">
+                <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M12,18A6,6 0 0,1 6,12C6,11 6.25,10.03 6.7,9.2L5.24,7.74C4.46,8.97 4,10.43 4,12A8,8 0 0,0 12,20V23L16,19L12,15M12,4V1L8,5L12,9V6A6,6 0 0,1 18,12C18,13 17.75,13.97 17.3,14.8L18.76,16.26C19.54,15.03 20,13.57 20,12A8,8 0 0,0 12,4Z"/></svg>
+              </button>
+
+              <button class="ft-btn-icon" id="ft-exit-module" title="退出沉浸模式">
+                <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/></svg>
+              </button>
+            </div>
+            
+            <!-- Timer display stage -->
+            <div class="ft-timer-stage">
+              <div class="ft-timer-display" id="ft-timer-display">
+                <span class="ft-time-big" id="ft-mins">25</span>
+                <span class="ft-time-unit" id="ft-unit">分钟</span>
+              </div>
+            </div>
+
+            <!-- Bottom Controls -->
+            <div class="ft-bottom-controls">
+              <button class="ft-ctrl-btn ft-btn-reset hidden" id="ft-reset" aria-label="Reset timer">
+                <svg viewBox="0 0 24 24" width="24" height="24"><rect x="6" y="6" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" rx="1"/></svg>
+              </button>
+              
+              <button class="ft-ctrl-btn ft-btn-play" id="ft-start-pause" aria-label="Start or pause">
+                <svg id="ft-play-svg" viewBox="0 0 24 24" width="28" height="28"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M8 5v14l11-7z"/></svg>
+              </button>
+              
+              <button class="ft-ctrl-btn ft-btn-skip" id="ft-skip" aria-label="Go to next section">
+                <svg viewBox="0 0 24 24" width="24" height="24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M5 5v14l8-7zM13 5v14l8-7z"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div> <!-- End of #view-pomodoro -->
+
+    </main>
+  </div>
+
+  <!-- Add/Edit Course Modal -->
+  <div class="modal-overlay" id="modal-overlay" style="display:none;">
+    <div class="modal">
+      <h3 class="modal-title" id="modal-title">添加课程</h3>
+      <div class="form-group"><label>课程名称</label><input type="text" id="input-name" placeholder="例如：数学、物理"></div>
+      <div class="form-row">
+        <div class="form-group"><label>星期</label>
+          <select id="input-day"><option value="0">周一</option><option value="1">周二</option><option value="2">周三</option><option value="3">周四</option><option value="4">周五</option><option value="5">周六</option><option value="6">周日</option></select>
+        </div>
+        <div class="form-group"><label>第几节开始</label><select id="input-period"></select></div>
+      </div>
+      <div class="form-group"><label>连续节数</label>
+        <select id="input-span"><option value="1">1 节</option><option value="2">2 节（大课）</option><option value="3">3 节</option><option value="4">4 节</option></select>
+      </div>
+      <div class="form-group"><label>颜色</label>
+        <div class="color-picker" id="color-picker">
+          <span class="color-opt selected" data-color="#4A90D9" style="background:#4A90D9"></span>
+          <span class="color-opt" data-color="#E8913A" style="background:#E8913A"></span>
+          <span class="color-opt" data-color="#5BBD72" style="background:#5BBD72"></span>
+          <span class="color-opt" data-color="#9B72CF" style="background:#9B72CF"></span>
+          <span class="color-opt" data-color="#E05D5D" style="background:#E05D5D"></span>
+          <span class="color-opt" data-color="#45B7C5" style="background:#45B7C5"></span>
+          <span class="color-opt" data-color="#F0C75E" style="background:#F0C75E"></span>
+          <span class="color-opt" data-color="#E88DA4" style="background:#E88DA4"></span>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="toolbar-btn" id="modal-cancel">取消</button>
+        <button class="toolbar-btn primary" id="modal-confirm">确认</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal (kept for dashboard toolbar) -->
+  <div class="modal-overlay" id="settings-overlay" style="display:none;">
+    <div class="modal modal-wide">
+      <h3 class="modal-title">⚙️ 课表时间设置</h3>
+      <p class="form-hint">修改后课表会自动重新计算所有节次的起止时间。</p>
+      <div class="settings-grid">
+        <div class="settings-section"><h4>上午</h4>
+          <div class="form-group"><label>第一节上课时间</label><input type="time" id="set-morning-start" value="08:00"></div>
+          <div class="form-group"><label>上午节数</label><input type="number" id="set-morning-count" min="0" value="4"></div>
+        </div>
+        <div class="settings-section"><h4>下午</h4>
+          <div class="form-group"><label>下午开始时间</label><input type="time" id="set-afternoon-start" value="13:30"></div>
+          <div class="form-group"><label>下午节数</label><input type="number" id="set-afternoon-count" min="0" value="4"></div>
+        </div>
+        <div class="settings-section"><h4>时长</h4>
+          <div class="form-group"><label>每节课时长（分钟）</label><input type="number" id="set-period-duration" min="1" value="45"></div>
+          <div class="form-group"><label>课间休息（分钟）</label><input type="number" id="set-break-duration" min="0" value="10"></div>
+        </div>
+      </div>
+      <div class="computed-preview" id="computed-preview"></div>
+      <div class="modal-actions">
+        <button class="toolbar-btn" id="settings-cancel">取消</button>
+        <button class="toolbar-btn primary" id="settings-confirm">应用设置</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add List Modal -->
+  <div class="modal-overlay" id="list-modal-overlay" style="display:none;">
+    <div class="modal" style="max-width:320px;">
+      <h3 class="modal-title">新建列表</h3>
+      <div class="form-group">
+        <label>列表名称</label>
+        <input type="text" id="input-list-name" placeholder="例如：工作、健身" autofocus>
+      </div>
+      <div class="modal-actions">
+        <button class="toolbar-btn" id="list-modal-cancel">取消</button>
+        <button class="toolbar-btn primary" id="list-modal-confirm">确认</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Add Recurring Modal -->
+  <div class="modal-overlay" id="recurring-modal-overlay" style="display:none;">
+    <div class="modal" style="max-width:400px;">
+      <h3 class="modal-title" id="recurring-modal-title">新增循环提醒</h3>
+      <div class="form-group">
+        <label>事项名称</label>
+        <input type="text" id="recurring-name" placeholder="例如：缴纳房租、体检" autofocus>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>起始日期</label>
+          <input type="date" id="recurring-start-date">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>循环周期 <span style="font-size:11px;color:var(--text-muted);">(至少填写一项，可组合)</span></label>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:4px;">
+            <input type="number" id="recurring-years" value="" min="0" placeholder="0" style="width:56px;text-align:center;">
+            <span style="color:var(--text-secondary);font-size:13px;">年</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px;">
+            <input type="number" id="recurring-months" value="" min="0" placeholder="0" style="width:56px;text-align:center;">
+            <span style="color:var(--text-secondary);font-size:13px;">个月</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px;">
+            <input type="number" id="recurring-days" value="" min="0" placeholder="0" style="width:56px;text-align:center;">
+            <span style="color:var(--text-secondary);font-size:13px;">天</span>
+          </div>
+        </div>
+        <p id="recurring-period-preview" style="margin:6px 0 0;font-size:12px;color:var(--accent);"></p>
+      </div>
+      <div class="modal-actions">
+        <button class="toolbar-btn" id="recurring-modal-cancel">取消</button>
+        <button class="toolbar-btn primary" id="recurring-modal-confirm">确认</button>
+      </div>
+    </div>
+  </div>
+
+
+  <script src="script.js"></script>
+</body>
+</html>
